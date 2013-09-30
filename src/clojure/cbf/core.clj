@@ -10,15 +10,15 @@
            [org.grouplens.lenskit.scored ScoredId]
            [cbf
             TFIDFItemScorer TFIDFModel TFIDFModelBuilder]
-           [cbf.dao 
-            CSVItemTagDAO ItemTagDAO ItemTitleDAO MOOCItemDAO MOOCRatingDAO MOOCUserDAO
-            RatingFile TagFile TitleFile UserFile UserNameDAO]))
+           [cbf.dao
+            CSVItemTagDAO ItemTagDAO ItemTitleDAO MOOCItemDAO MOOCRatingDAO
+            MOOCUserDAO RatingFile TagFile TitleFile UserFile UserNameDAO]))
 
 (defn- configure-recommender
   []
   (doto (LenskitConfiguration.)
     ;; configure the rating data source
-    (-> (.bind EventDAO) 
+    (-> (.bind EventDAO)
         (.to MOOCRatingDAO))
     (-> (.set RatingFile)
         (.to (io/file "data/ratings.csv")))
@@ -40,7 +40,7 @@
     ;; use the TF-IDF scorer you will implement to score items
     (-> (.bind ItemScorer)
         (.to TFIDFItemScorer))))
-                     
+
 (defn run
   [users]
   (let [config (configure-recommender)
@@ -58,7 +58,7 @@
         (when (= (.getMessage e)
                  "stub implementation")
           (println "Congratulations, the stub builds and runs!"))))))
-      
+
 
 (defn -main
   [& args]
