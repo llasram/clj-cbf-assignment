@@ -22,7 +22,7 @@
 (defn tfidf-model
   [^ItemTagDAO dao]
   (let [tag-ids (zipmap (.getTagVocabulary dao) (range))
-        ^ MutableSparseVector doc-freq
+        ^MutableSparseVector doc-freq
         , (doto (-> tag-ids vals MutableSparseVector/create)
             (.fill 0))
         ^MutableSparseVector work
@@ -69,16 +69,36 @@
       (-> (.score this user ^Collection [item])
           (.get item Double/NaN)))))
 
+(defn ^:private mean-sd-step
+  [[n m s] ^double x]
+  (let [n (long n), m (double m), s (double s)
+        n (inc n), δ (- x m), m (+ m (/ δ n)), s (+ s (* δ (- x m)))]
+    [n m s]))
+
+(defn mean-sd
+  "Calculate mean and (sample) standard-deviation of `vals`."
+  [vals]
+  (let [[n m s] (reduce mean-sd-step [0 0.0 0.0] vals)]
+    [m (if (<= n 1) 0.0 (Math/sqrt (/ s (dec n))))]))
+
+(defn mean
+  [vals] (-> vals mean-sd first))
+
 (defn make-uvec
   [^UserEventDAO dao ^TFIDFModel model user]
   (let [ratings (.getEventsForUser dao user Rating)]
     (if (nil? ratings)
       (SparseVector/empty)
-      (let [profile (doto (.newTagVector model) (.fill 0))]
-        (doseq [^Rating r ratings, :let [p (.getPreference r)]
-                :when (and p (-> p .getValue (>= 3.5)))
-                :let [item (.getItemId r)]]
-          (.add profile (.getItemVector model item)))
+      (let [profile (doto (.newTagVector model) (.fill 0))
+            preferences (fn [^Rating r]
+                          (if-let [p (.getPreference r)]
+                            (.getValue p)))
+            μ (mean (keep preferences ratings))]
+        (doseq [^Rating r ratings, :let [p (.getPreference r)], :when p
+                :let [s (.getValue p), item (.getItemId r),
+                      iv (doto (.mutableCopy (.getItemVector model item))
+                           (.multiply (double (- s μ))))]]
+          (.add profile iv))
         (.multiply profile (-> profile .norm / double))
         (.freeze profile)))))
 
