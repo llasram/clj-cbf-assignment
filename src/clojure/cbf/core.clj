@@ -32,13 +32,15 @@
                       (.clear work)
                       (->> (.getItemTags dao item)
                            (map tag-ids)
-                           (group-by identity)
-                           (reduce (fn [_ [^long tag tags]]
-                                     (.add doc-freq tag 1)
-                                     (.set work tag (-> tags count double)))))
+                           (reduce #(assoc! %1 %2 (inc (get %1 %2 0.0)))
+                                   (transient {}))
+                           (persistent!)
+                           (reduce (fn [_ [^long tag ^double n]]
+                                     (.add doc-freq tag 1.0)
+                                     (.set work tag n))))
                       [item (.shrinkDomain work)])
                     (.getItemIds dao)))
-        _ (doseq [:let [ndocs (-> dao .getItemIds count double)]
+        _ (doseq [:let [ndocs (count items)]
                   ^VectorEntry e (.fast doc-freq)
                   :let [df (.getValue e)] :when (pos? df)]
             (.set doc-freq (.getKey e) (->> df (/ ndocs) Math/log)))
@@ -63,7 +65,8 @@
         (.score this user scores)
         (.freeze scores)))
     (^double score [this ^long user ^long item]
-      (-> this (.score user ^Collection [item]) (.get item Double/NaN)))))
+      (-> (.score this user ^Collection [item])
+          (.get item Double/NaN)))))
 
 (defn make-uvec
   [^UserEventDAO dao ^TFIDFModel model user]
