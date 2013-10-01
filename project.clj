@@ -3,7 +3,7 @@
   :url "https://gist.github.com/llasram/6472144"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :source-paths      ["src/clojure"]
+  :source-paths ["src/clojure"]
   :java-source-paths ["src/java"]
   :main ^:skip-aot cbf.core
   :dependencies [[org.clojure/clojure "1.5.1"]
