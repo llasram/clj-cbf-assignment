@@ -116,9 +116,9 @@
       (doseq [user users, :let [recs (.recommend irec user 5)]]
         (when (empty? recs)
           (println "no recommendations for user:" user "do they exist?"))
-        (println "recommendations for user:" user)
-        (doseq [id recs]
-          (->> id .getId (format "\t%d\n") print)))
+        (printf "recommendations for user %d:\n" user)
+        (doseq [^ScoredId id recs]
+          (printf "  %d: %.4f\n" (.getId id) (.getScore id))))
       (catch UnsupportedOperationException e
         (when (= (.getMessage e) "stub implementation")
           (println "Congratulations, the stub builds and runs!"))))))
