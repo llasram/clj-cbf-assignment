@@ -37,7 +37,8 @@
                            (persistent!)
                            (reduce (fn [_ [^long tag ^double n]]
                                      (.add doc-freq tag 1.0)
-                                     (.set work tag n))))
+                                     (.set work tag n))
+                                   nil))
                       [item (.shrinkDomain work)])
                     (.getItemIds dao)))
         _ (doseq [:let [ndocs (count items)]
