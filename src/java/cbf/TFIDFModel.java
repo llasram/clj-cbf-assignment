@@ -12,13 +12,10 @@ import java.util.Map;
  * The model for a TF-IDF recommender.  The model just remembers the normalized tag vector for each
  * item.
  *
- * @see TFIDFModelBuilder
  * @author <a href="http://www.grouplens.org">GroupLens Research</a>
  */
 // LensKit models are annotated with @Shareable so they can be serialized and reused
 @Shareable
-// This model class will be built by the model builder
-@DefaultProvider(TFIDFModelBuilder.class)
 public class TFIDFModel implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -26,8 +23,7 @@ public class TFIDFModel implements Serializable {
     private final Map<Long, SparseVector> itemVectors;
 
     /**
-     * Constructor for the model.  This is package-private; the only way to build a model is with
-     * the {@linkplain TFIDFModelBuilder model builder}.
+     * Constructor for the model.
      * <p>
      * In a LensKit model designed for a large data set, these would be optimized fastutil maps for
      * efficiency.
@@ -35,7 +31,7 @@ public class TFIDFModel implements Serializable {
      * @param tagIds A map of tags to their IDs.
      * @param itemVectors A map of item IDs to tag vectors.
      */
-    TFIDFModel(Map<String,Long> tagIds, Map<Long,SparseVector> itemVectors) {
+    public TFIDFModel(Map<String,Long> tagIds, Map<Long,SparseVector> itemVectors) {
         this.tagIds = tagIds;
         this.itemVectors = itemVectors;
     }
