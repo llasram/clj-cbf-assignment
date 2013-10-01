@@ -11,7 +11,7 @@
                  [org.grouplens.lenskit/lenskit-core "2.0.2"]
                  [org.grouplens.lenskit/lenskit-api "2.0.2"]
                  [org.grouplens.lenskit/lenskit-data-structures "2.0.2"]
-                 [org.platypope/esfj "0.1.0"]
+                 [org.platypope/esfj "0.1.1"]
                  [org.slf4j/slf4j-api "1.7.5"]
                  [org.slf4j/slf4j-log4j12 "1.7.5"]
                  [log4j "1.2.17"]])
