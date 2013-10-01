@@ -22,26 +22,33 @@
 (defn tfidf-model
   [^ItemTagDAO dao]
   (let [tag-ids (zipmap (.getTagVocabulary dao) (range))
-        doc-freq (doto (-> tag-ids vals MutableSparseVector/create)
-                   (.fill 0))
-        work (-> tag-ids vals MutableSparseVector/create)
+        ^ MutableSparseVector doc-freq
+        , (doto (-> tag-ids vals MutableSparseVector/create)
+            (.fill 0))
+        ^MutableSparseVector work
+        , (-> tag-ids vals MutableSparseVector/create)
         items (doall
                (map (fn [item]
                       (.clear work)
-                      ;; TODO Populate the work vector with the number of times
-                      ;;      each tag is applied to this item.
-                      ;; TODO Increment the document frequency vector once for
-                      ;;      each unique tag on the item.
+                      (->> (.getItemTags dao item)
+                           (map tag-ids)
+                           (group-by identity)
+                           (reduce (fn [_ [^long tag tags]]
+                                     (.add doc-freq tag 1)
+                                     (.set work tag (-> tags count double)))))
                       [item (.shrinkDomain work)])
                     (.getItemIds dao)))
-        _ (doseq [e (.fast doc-freq)]
-            ;; TODO Update this document frequency entry to be a log-IDF value
-            )
-        model (map (fn [[item tv]]
-                     ;; TODO Convert this vector to a TF-IDF vector
-                     ;; TODO Normalize the TF-IDF vector to be a unit vector
-                     ;; HINT The method tv.norm() will give you the Euclidian
-                     ;;      length of the vector
+        _ (doseq [:let [ndocs (-> dao .getItemIds count double)]
+                  ^VectorEntry e (.fast doc-freq)
+                  :let [df (.getValue e)] :when (pos? df)]
+            (.set doc-freq (.getKey e) (->> df (/ ndocs) Math/log)))
+        model (map (fn [[item ^MutableSparseVector tv]]
+                     (doseq [^VectorEntry e (.fast tv),
+                             :let [tag (.getKey e)
+                                   tf (.getValue e)
+                                   idf (.get doc-freq tag)]]
+                       (.set tv tag (* tf idf)))
+                     (.multiply tv (-> tv .norm / double))
                      [item (.freeze tv)])
                    items)]
     (TFIDFModel. tag-ids (into {} model))))
@@ -56,19 +63,19 @@
         (.score this user scores)
         (.freeze scores)))
     (^double score [this ^long user ^long item]
-      (-> this (.score user [item]) (.get item Double/NaN)))))
+      (-> this (.score user ^Collection [item]) (.get item Double/NaN)))))
 
 (defn make-uvec
-  [dao model user]
+  [^UserEventDAO dao ^TFIDFModel model user]
   (let [ratings (.getEventsForUser dao user Rating)]
     (if (nil? ratings)
       (SparseVector/empty)
       (let [profile (doto (.newTagVector model) (.fill 0))]
-        (doseq [r ratings, :let [p (.getPreference r)]
-                :when (and p (-> p .getValue (>= 3.5)))]
-          ;; TODO Get the item's vector and add it to the user's
-          ;; profile
-          )
+        (doseq [^Rating r ratings, :let [p (.getPreference r)]
+                :when (and p (-> p .getValue (>= 3.5)))
+                :let [item (.getItemId r)]]
+          (.add profile (.getItemVector model item)))
+        (.multiply profile (-> profile .norm / double))
         (.freeze profile)))))
 
 (defprovider TFIItemScorerProvider ItemScorer [UserEventDAO TFIDFModel])
@@ -76,13 +83,10 @@
   [^UserEventDAO dao ^TFIDFModel model]
   (item-scorer
    (fn [^long user ^MutableSparseVector output]
-     (doseq [:let [uvec (make-uvec dao model user)]
-             e (.fast output VectorEntry$State/EITHER)
-             :let [iv (->> e .getKey (.getItemVector model))]]
-       ;; TODO Compute the cosine of this item and the user's profile, store it
-       ;;      in the output vector
-       ;; TODO And remove this exception to say you've implemented it
-       (throw (UnsupportedOperationException. "stub implementation"))))))
+     (doseq [:let [^SparseVector uvec (make-uvec dao model user)]
+             ^VectorEntry e (.fast output VectorEntry$State/EITHER)
+             :let [tag (.getKey e), iv (.getItemVector model tag)]]
+       (.set output tag (.dot uvec iv))))))
 
 (defn ^:private configure-recommender
   []
